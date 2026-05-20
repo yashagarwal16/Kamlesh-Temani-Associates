@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import axios from 'axios';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
 
@@ -9,18 +9,16 @@ const twilioClient = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-const emailTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
 export const sendEmailNotification = async (bookingData) => {
   try {
+    if (!process.env.BREVO_API_KEY) {
+      throw new Error('BREVO_API_KEY is not configured');
+    }
+
+    if (!process.env.COUNSELOR_EMAIL) {
+      throw new Error('COUNSELOR_EMAIL is not configured');
+    }
+
     const {
       name,
       email,
@@ -63,18 +61,42 @@ export const sendEmailNotification = async (bookingData) => {
       </div>
     `;
 
-    const info = await emailTransporter.sendMail({
-      from: `"Website Booking System" <${process.env.SMTP_USER}>`,
-      to: process.env.COUNSELOR_EMAIL,
-      subject: `New Consultation Booking - ${name}`,
-      html,
-    });
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.COUNSELOR_EMAIL;
+    const senderName = process.env.BREVO_SENDER_NAME || 'Website Booking System';
 
-    console.log('Email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    const response = await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name: senderName,
+          email: senderEmail,
+        },
+        to: [
+          {
+            email: process.env.COUNSELOR_EMAIL,
+          },
+        ],
+        replyTo: {
+          email,
+          name,
+        },
+        subject: `New Consultation Booking - ${name}`,
+        htmlContent: html,
+      },
+      {
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json',
+        },
+      }
+    );
+
+    console.log('Email sent via Brevo:', response.data.messageId);
+    return { success: true, messageId: response.data.messageId };
   } catch (error) {
-    console.error('Email error:', error);
-    return { success: false, error: error.message };
+    const details = error.response?.data?.message || error.message;
+    console.error('Email error:', details);
+    return { success: false, error: details };
   }
 };
 
