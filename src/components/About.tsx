@@ -3,7 +3,7 @@ import CountUp from "react-countup";
 import { Award, Users, Target, Briefcase, CheckCircle2, TrendingUp, Shield } from 'lucide-react';
 import BeautyImage from './images/beauty.png';
 import mousumiImage from './images/mausmi.png';
-import kamleshImage from './images/Kamlesh.png';
+import kamleshImage from './images/kamlesh.png';
 import aartiImage from './images/aarti.jpeg'
 import dipikaImage from './images/dipika.png'
 
